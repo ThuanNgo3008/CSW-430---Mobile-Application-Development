@@ -49,6 +49,7 @@ const styles = StyleSheet.create({
     },
     list: {
         alignItems: 'center',
+
     },
 });
 
