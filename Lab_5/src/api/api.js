@@ -1,0 +1,1 @@
+export const BASE_URL = 'https://kami-backend-5rs0.onrender.com';
