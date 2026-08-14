@@ -1,7 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
+import {
+    View,
+    StyleSheet,
+    ScrollView,
+    Alert,
+    TouchableOpacity,
+} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Text, ActivityIndicator, Icon } from 'react-native-paper';
+import {
+    Text,
+    ActivityIndicator,
+    Icon,
+} from 'react-native-paper';
 import { Dropdown } from 'react-native-element-dropdown';
 import axios from 'axios';
 import { BASE_URL } from '../api/api';
@@ -15,16 +25,22 @@ export default function AddTransactionScreen({ navigation }) {
     const [customerDropdownOpen, setCustomerDropdownOpen] = useState(false);
 
     useEffect(() => {
-        fetchTransactions();
+        fetchData();
     }, []);
 
-    const fetchTransactions = async () => {
+    const fetchData = async () => {
         try {
             setLoading(true);
 
-            const customerResponse = await axios.get(
-                `${BASE_URL}/customers`
-            );
+            const [
+                customerResponse,
+                serviceResponse,
+                transactionResponse,
+            ] = await Promise.all([
+                axios.get(`${BASE_URL}/customers`),
+                axios.get(`${BASE_URL}/services`),
+                axios.get(`${BASE_URL}/transactions`),
+            ]);
 
             const customerData = Array.isArray(customerResponse.data)
                 ? customerResponse.data
@@ -38,69 +54,37 @@ export default function AddTransactionScreen({ navigation }) {
                     value: customer._id,
                 }));
 
-            const transactionResponse = await axios.get(
-                `${BASE_URL}/transactions`
-            );
+            const serviceData = Array.isArray(serviceResponse.data)
+                ? serviceResponse.data
+                : serviceResponse.data?.data || [];
 
-            const data = Array.isArray(transactionResponse.data)
+            const serviceList = serviceData
+                .filter(service => service?._id)
+                .map(service => ({
+                    _id: service._id,
+                    name: service.name || 'Service',
+                    price: Number(service.price) || 0,
+                    selected: false,
+                    quantity: 1,
+                    executor: null,
+                }));
+
+            const transactionData = Array.isArray(transactionResponse.data)
                 ? transactionResponse.data
                 : transactionResponse.data?.data || [];
 
-            const serviceMap = new Map();
             const executorMap = new Map();
 
-            data.forEach(transaction => {
-                if (transaction.customer?._id) {
-                    const customer = transaction.customer;
-
-                    if (
-                        !customerList.some(
-                            item => item.value === customer._id
-                        )
-                    ) {
-                        customerList.push({
-                            label: `${customer.name || 'Unknown'} - ${customer.phone || 'No phone'
-                                }`,
-                            value: customer._id,
-                        });
-                    }
-                }
-
+            transactionData.forEach(transaction => {
                 if (transaction.createdBy?._id) {
-                    const user = transaction.createdBy;
-                    executorMap.set(user._id, user);
+                    executorMap.set(
+                        transaction.createdBy._id,
+                        transaction.createdBy
+                    );
                 }
 
                 if (Array.isArray(transaction.services)) {
                     transaction.services.forEach(service => {
-                        if (!service?._id) {
-                            return;
-                        }
-
-                        const serviceId = service._id;
-
-                        const serviceName =
-                            service.name ||
-                            service.serviceName ||
-                            service.title ||
-                            service.service_name ||
-                            'Service';
-
-                        const servicePrice =
-                            Number(
-                                service.price ??
-                                service.priceBeforePromotion ??
-                                0
-                            ) || 0;
-
-                        if (!serviceMap.has(serviceId)) {
-                            serviceMap.set(serviceId, {
-                                _id: serviceId,
-                                name: serviceName,
-                                price: servicePrice,
-                            });
-                        }
-
                         if (service.user?._id) {
                             executorMap.set(
                                 service.user._id,
@@ -125,32 +109,21 @@ export default function AddTransactionScreen({ navigation }) {
                 }
             });
 
-            setCustomers(customerList);
-
-            const serviceList = Array.from(
-                serviceMap.values()
-            ).map(service => ({
-                _id: service._id,
-                name: service.name,
-                price: service.price,
-                selected: false,
-                quantity: 1,
-                executor: null,
-            }));
-
-            setServices(serviceList);
-
             const executorList = Array.from(
                 executorMap.values()
-            ).map(user => ({
-                label:
-                    user.name ||
-                    user.phone ||
-                    user.email ||
-                    'Executor',
-                value: user._id,
-            }));
+            )
+                .filter(user => user?._id)
+                .map(user => ({
+                    label:
+                        user.name ||
+                        user.phone ||
+                        user.email ||
+                        'Executor',
+                    value: user._id,
+                }));
 
+            setCustomers(customerList);
+            setServices(serviceList);
             setExecutors(executorList);
         } catch (error) {
             console.log(
@@ -166,6 +139,10 @@ export default function AddTransactionScreen({ navigation }) {
                 errorMessage = errorData;
             } else if (errorData?.message) {
                 errorMessage = String(errorData.message);
+            } else if (errorData?.errors?.length) {
+                errorMessage = errorData.errors
+                    .map(item => item.msg)
+                    .join('\n');
             } else if (error.message) {
                 errorMessage = String(error.message);
             }
@@ -292,7 +269,8 @@ export default function AddTransactionScreen({ navigation }) {
         );
 
         try {
-            const token = await AsyncStorage.getItem('token');
+            const token =
+                await AsyncStorage.getItem('token');
 
             console.log('TOKEN:', token);
 
@@ -302,7 +280,8 @@ export default function AddTransactionScreen({ navigation }) {
                 {
                     headers: {
                         Authorization: `Bearer ${token}`,
-                        'Content-Type': 'application/json',
+                        'Content-Type':
+                            'application/json',
                     },
                 }
             );
@@ -329,19 +308,53 @@ export default function AddTransactionScreen({ navigation }) {
                 error.response?.data || error.message
             );
 
+            console.log(
+                'STATUS:',
+                error.response?.status
+            );
+
+            console.log(
+                'RESPONSE DATA:',
+                JSON.stringify(
+                    error.response?.data,
+                    null,
+                    2
+                )
+            );
+
+            console.log(
+                'REQUEST BODY:',
+                JSON.stringify(body, null, 2)
+            );
+
             const errorData = error.response?.data;
 
-            let errorMessage = 'Cannot create transaction.';
+            let errorMessage =
+                'Cannot create transaction.';
 
             if (typeof errorData === 'string') {
                 errorMessage = errorData;
+            } else if (
+                errorData?.errors?.length
+            ) {
+                errorMessage =
+                    errorData.errors
+                        .map(item => item.msg)
+                        .join('\n');
             } else if (errorData?.message) {
-                errorMessage = String(errorData.message);
+                errorMessage = String(
+                    errorData.message
+                );
             } else if (error.message) {
-                errorMessage = String(error.message);
+                errorMessage = String(
+                    error.message
+                );
             }
 
-            Alert.alert('Error', errorMessage);
+            Alert.alert(
+                `Error ${error.response?.status || ''}`,
+                errorMessage
+            );
         }
     };
 
@@ -359,41 +372,76 @@ export default function AddTransactionScreen({ navigation }) {
     return (
         <View style={styles.container}>
             <ScrollView
-                contentContainerStyle={styles.scroll}
+                contentContainerStyle={
+                    styles.scroll
+                }
                 showsVerticalScrollIndicator={false}
-                scrollEnabled={!customerDropdownOpen}
+                scrollEnabled={
+                    !customerDropdownOpen
+                }
             >
-                <Text style={styles.customerLabel}>
+                <Text
+                    style={
+                        styles.customerLabel
+                    }
+                >
                     Customer *
                 </Text>
 
                 <Dropdown
                     style={styles.dropdown}
-                    placeholderStyle={styles.placeholder}
-                    selectedTextStyle={styles.selectedText}
+                    placeholderStyle={
+                        styles.placeholder
+                    }
+                    selectedTextStyle={
+                        styles.selectedText
+                    }
                     data={customers}
                     labelField="label"
                     valueField="value"
                     placeholder="Select customer"
                     value={selectedCustomer}
                     dropdownPosition="bottom"
-                    maxHeight={240}
-                    containerStyle={{
-                        borderRadius: 18,
-                        marginTop: -50,
-                    }}
+                    maxHeight={220}
+                    containerStyle={
+                        styles.customerDropdown
+                    }
                     flatListProps={{
                         nestedScrollEnabled: true,
-                        keyboardShouldPersistTaps: 'handled',
+                        keyboardShouldPersistTaps:
+                            'handled',
                     }}
-                    onChange={item =>
-                        setSelectedCustomer(item.value)
+                    onFocus={() =>
+                        setCustomerDropdownOpen(
+                            true
+                        )
                     }
+                    onBlur={() =>
+                        setCustomerDropdownOpen(
+                            false
+                        )
+                    }
+                    onChange={item => {
+                        setSelectedCustomer(
+                            item.value
+                        );
+                        setCustomerDropdownOpen(
+                            false
+                        );
+                    }}
                 />
 
                 {services.length === 0 ? (
-                    <View style={styles.emptyService}>
-                        <Text style={styles.emptyText}>
+                    <View
+                        style={
+                            styles.emptyService
+                        }
+                    >
+                        <Text
+                            style={
+                                styles.emptyText
+                            }
+                        >
                             No services available.
                         </Text>
                     </View>
@@ -401,8 +449,12 @@ export default function AddTransactionScreen({ navigation }) {
                     services.map(
                         (service, index) => (
                             <View
-                                key={service._id}
-                                style={styles.service}
+                                key={
+                                    service._id
+                                }
+                                style={
+                                    styles.service
+                                }
                             >
                                 <View
                                     style={
@@ -410,7 +462,9 @@ export default function AddTransactionScreen({ navigation }) {
                                     }
                                 >
                                     <TouchableOpacity
-                                        activeOpacity={0.8}
+                                        activeOpacity={
+                                            0.8
+                                        }
                                         style={[
                                             styles.checkbox,
                                             service.selected &&
@@ -423,17 +477,11 @@ export default function AddTransactionScreen({ navigation }) {
                                         }
                                     >
                                         {service.selected && (
-                                            <Text
-                                                style={
-                                                    styles.checkMark
-                                                }
-                                            >
-                                                <Icon
-                                                    source="check"
-                                                    size={15}
-                                                    color="#fff"
-                                                />
-                                            </Text>
+                                            <Icon
+                                                source="check"
+                                                size={15}
+                                                color="#fff"
+                                            />
                                         )}
                                     </TouchableOpacity>
 
@@ -441,9 +489,13 @@ export default function AddTransactionScreen({ navigation }) {
                                         style={
                                             styles.serviceName
                                         }
-                                        numberOfLines={1}
+                                        numberOfLines={
+                                            1
+                                        }
                                     >
-                                        {service.name}
+                                        {
+                                            service.name
+                                        }
                                     </Text>
                                 </View>
 
@@ -588,7 +640,9 @@ export default function AddTransactionScreen({ navigation }) {
                     {selectedServices.map(
                         service => (
                             <View
-                                key={service._id}
+                                key={
+                                    service._id
+                                }
                                 style={
                                     styles.summaryRow
                                 }
@@ -597,10 +651,14 @@ export default function AddTransactionScreen({ navigation }) {
                                     style={
                                         styles.summaryName
                                     }
-                                    numberOfLines={1}
+                                    numberOfLines={
+                                        1
+                                    }
                                 >
                                     {service.name} x
-                                    {service.quantity}
+                                    {
+                                        service.quantity
+                                    }
                                 </Text>
 
                                 <Text
@@ -621,16 +679,22 @@ export default function AddTransactionScreen({ navigation }) {
                     )}
 
                     <View
-                        style={styles.totalRow}
+                        style={
+                            styles.totalRow
+                        }
                     >
                         <Text
-                            style={styles.totalText}
+                            style={
+                                styles.totalText
+                            }
                         >
                             Total
                         </Text>
 
                         <Text
-                            style={styles.totalPrice}
+                            style={
+                                styles.totalPrice
+                            }
                         >
                             {total.toLocaleString(
                                 'vi-VN'
@@ -639,12 +703,15 @@ export default function AddTransactionScreen({ navigation }) {
                         </Text>
                     </View>
                 </View>
+            </ScrollView>
 
+            <View style={styles.bottomButton}>
                 <TouchableOpacity
                     style={styles.submit}
                     onPress={
                         handleCreateTransaction
                     }
+                    activeOpacity={0.8}
                 >
                     <Text
                         style={
@@ -658,7 +725,7 @@ export default function AddTransactionScreen({ navigation }) {
                         đ)
                     </Text>
                 </TouchableOpacity>
-            </ScrollView>
+            </View>
         </View>
     );
 }
@@ -677,7 +744,7 @@ const styles = StyleSheet.create({
 
     scroll: {
         padding: 18,
-        paddingBottom: 40,
+        paddingBottom: 100,
     },
 
     customerLabel: {
@@ -691,14 +758,13 @@ const styles = StyleSheet.create({
         height: 52,
         borderRadius: 15,
         paddingHorizontal: 14,
-        marginBottom: 5,
+        marginBottom: 12,
         backgroundColor: '#fff',
         elevation: 3,
     },
 
     customerDropdown: {
-        marginTop: -5,
-        borderRadius: 8,
+        borderRadius: 18,
     },
 
     placeholder: {
@@ -745,13 +811,6 @@ const styles = StyleSheet.create({
     checkboxSelected: {
         backgroundColor: '#ffb56d',
         borderColor: '#ffb56d',
-    },
-
-    checkMark: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: 'bold',
-        lineHeight: 18,
     },
 
     serviceName: {
@@ -876,13 +935,25 @@ const styles = StyleSheet.create({
         color: '#e94867',
     },
 
+    bottomButton: {
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        bottom: 0,
+        paddingHorizontal: 18,
+        paddingTop: 10,
+        paddingBottom: 18,
+        backgroundColor: '#fff',
+        borderTopWidth: 1,
+        borderTopColor: '#eee',
+    },
+
     submit: {
         height: 50,
         backgroundColor: '#f04f6d',
         borderRadius: 10,
         justifyContent: 'center',
         alignItems: 'center',
-        marginTop: 18,
     },
 
     submitText: {

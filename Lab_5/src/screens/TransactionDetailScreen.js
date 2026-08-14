@@ -4,7 +4,7 @@ import { Text, ActivityIndicator, IconButton } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Menu, MenuOptions, MenuTrigger } from 'react-native-popup-menu';
+import { Menu, MenuOptions, MenuOption, MenuTrigger } from 'react-native-popup-menu';
 import { BASE_URL } from '../api/api';
 
 export default function TransactionDetailScreen({ route, navigation }) {
@@ -33,7 +33,17 @@ export default function TransactionDetailScreen({ route, navigation }) {
     React.useLayoutEffect(() => {
         navigation.setOptions({
             headerRight: () => (
-                <Menu>
+                <Menu
+                    onSelect={value => {
+                        if (value === 'details') {
+                            navigation.navigate('EditCustomer', { id });
+                        }
+
+                        if (value === 'cancel') {
+                            handleCancel();
+                        }
+                    }}
+                >
                     <MenuTrigger>
                         <IconButton
                             icon="dots-vertical"
@@ -42,39 +52,21 @@ export default function TransactionDetailScreen({ route, navigation }) {
                     </MenuTrigger>
 
                     <MenuOptions>
-                        <Pressable
-                            onPress={() =>
-                                navigation.navigate('EditCustomer', { id })
-                            }
-                        >
-                            {({ pressed }) => (
-                                <View style={styles.menuItem}>
-                                    <Text
-                                        style={[
-                                            styles.menuText,
-                                            pressed && styles.pressedText,
-                                        ]}
-                                    >
-                                        See more details
-                                    </Text>
-                                </View>
-                            )}
-                        </Pressable>
+                        <MenuOption value="details">
+                            <View style={styles.menuItem}>
+                                <Text style={styles.menuText}>
+                                    See more details
+                                </Text>
+                            </View>
+                        </MenuOption>
 
-                        <Pressable onPress={handleCancel}>
-                            {({ pressed }) => (
-                                <View style={styles.menuItem}>
-                                    <Text
-                                        style={[
-                                            styles.menuText,
-                                            pressed && styles.pressedText,
-                                        ]}
-                                    >
-                                        Cancel transaction
-                                    </Text>
-                                </View>
-                            )}
-                        </Pressable>
+                        <MenuOption value="cancel">
+                            <View style={styles.menuItem}>
+                                <Text style={styles.menuText}>
+                                    Cancel transaction
+                                </Text>
+                            </View>
+                        </MenuOption>
                     </MenuOptions>
                 </Menu>
             ),
@@ -91,17 +83,27 @@ export default function TransactionDetailScreen({ route, navigation }) {
                     style: 'destructive',
                     onPress: async () => {
                         try {
-                            await axios.delete(`${BASE_URL}/transactions/${id}`, {
-                                status: 'cancelled',
-                            });
+                            await axios.delete(
+                                `${BASE_URL}/transactions/${id}`
+                            );
+
                             navigation.goBack();
                         } catch (err) {
-                            console.log(err.response?.data || err.message);
-                            Alert.alert('Error', 'Cancel transaction failed');
+                            console.log(
+                                err.response?.data || err.message
+                            );
+
+                            Alert.alert(
+                                'Error',
+                                'Cancel transaction failed'
+                            );
                         }
                     },
                 },
-                { text: 'CANCEL', style: 'cancel' },
+                {
+                    text: 'CANCEL',
+                    style: 'cancel',
+                },
             ]
         );
     };
