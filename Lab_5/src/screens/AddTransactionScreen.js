@@ -377,9 +377,10 @@ export default function AddTransactionScreen({ navigation }) {
                     placeholder="Select customer"
                     value={selectedCustomer}
                     dropdownPosition="bottom"
-                    maxHeight={220}
+                    maxHeight={240}
                     containerStyle={{
                         borderRadius: 18,
+                        marginTop: -50,
                     }}
                     flatListProps={{
                         nestedScrollEnabled: true,
