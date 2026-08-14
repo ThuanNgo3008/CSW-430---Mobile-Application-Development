@@ -65,7 +65,7 @@ export default function ServiceDetailScreen({ route, navigation }) {
                             await axios.delete(`${BASE_URL}/services/${id}`, {
                                 headers: { Authorization: `Bearer ${token}` },
                             });
-                            navigation.navigate('Home');
+                            navigation.goBack();
                         } catch (err) {
                             console.log(err.response?.data || err.message);
                             Alert.alert('Lỗi', 'Xóa thất bại');
@@ -74,6 +74,21 @@ export default function ServiceDetailScreen({ route, navigation }) {
                 },
             ]
         );
+    };
+
+    const formatDate = (date) => {
+        if (!date) return 'N/A';
+        const d = new Date(date);
+        if (isNaN(d.getTime())) return 'N/A';
+
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+
+        const hour = String(d.getHours()).padStart(2, '0');
+        const minute = String(d.getMinutes()).padStart(2, '0');
+        const second = String(d.getSeconds()).padStart(2, '0');
+        return `${day}/${month}/${year} ${hour}:${minute}:${second}`;
     };
 
     if (loading || !service) {
@@ -88,7 +103,7 @@ export default function ServiceDetailScreen({ route, navigation }) {
             </Text>
             <Text style={styles.line}>
                 <Text style={styles.bold}>Price: </Text>
-                {Number(service.price).toLocaleString()} đ
+                {Number(service.price).toLocaleString('vi-VN')} đ
             </Text>
             <Text style={styles.line}>
                 <Text style={styles.bold}>Creator: </Text>
@@ -96,11 +111,11 @@ export default function ServiceDetailScreen({ route, navigation }) {
             </Text>
             <Text style={styles.line}>
                 <Text style={styles.bold}>Time: </Text>
-                {new Date(service.createdAt).toLocaleString()}
+                {formatDate(service.createdAt)}
             </Text>
             <Text style={styles.line}>
                 <Text style={styles.bold}>Final update: </Text>
-                {new Date(service.updatedAt).toLocaleString()}
+                {formatDate(service.updatedAt)}
             </Text>
         </View>
     );

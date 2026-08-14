@@ -20,18 +20,18 @@ export default function TransactionItem({ transaction, onPress }) {
 
     return (
         <TouchableOpacity style={styles.item} onPress={onPress}>
+            <Text style={styles.title}>
+                {transaction.id} - {formatDate(transaction.createdAt)}
+
+                {transaction.status === 'cancelled' && (
+                    <Text style={styles.cancelled}>  - Cancelled</Text>
+                )}
+            </Text>
             <View style={styles.body}>
                 <View style={styles.content}>
-                    <Text style={styles.title}>
-                        {transaction.id} - {formatDate(transaction.createdAt)}
-
-                        {transaction.status === 'cancelled' && (
-                            <Text style={styles.cancelled}>  - Cancelled</Text>
-                        )}
-                    </Text>
 
                     {transaction.services?.map((service, index) => (
-                        <Text key={service._id || index} style={styles.products}>
+                        <Text numberOfLines={1} key={service._id || index} style={styles.products}>
                             - {service.name}
                         </Text>
                     ))}
@@ -48,9 +48,6 @@ export default function TransactionItem({ transaction, onPress }) {
 
 const styles = StyleSheet.create({
     item: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
         padding: 14,
         borderWidth: 2,
         borderColor: '#eee',
@@ -59,19 +56,19 @@ const styles = StyleSheet.create({
     },
     body: {
         flexDirection: 'row',
+        justifyContent: 'space-between',
     },
     content: {
-        width: 200,
+        width: 150,
     },
     money: {
-        width: 150,
         justifyContent: 'center',
         alignItems: 'flex-end',
 
     },
     title: {
         fontWeight: 'bold',
-        fontSize: 9,
+        fontSize: 11,
     },
     cancelled: {
         color: '#FF4F4F',
@@ -87,9 +84,9 @@ const styles = StyleSheet.create({
     },
     price: {
         color: '#e94867',
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: 'bold',
 
     },
-    
+
 });

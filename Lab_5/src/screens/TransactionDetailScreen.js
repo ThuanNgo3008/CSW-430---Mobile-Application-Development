@@ -1,17 +1,16 @@
 import React, { useState, useCallback } from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
+import { View, StyleSheet, Alert, Pressable } from 'react-native';
 import { Text, ActivityIndicator, IconButton } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Menu, MenuOptions, MenuOption, MenuTrigger } from 'react-native-popup-menu';
+import { Menu, MenuOptions, MenuTrigger } from 'react-native-popup-menu';
 import { BASE_URL } from '../api/api';
 
 export default function TransactionDetailScreen({ route, navigation }) {
     const { id } = route.params;
     const [transaction, setTransaction] = useState(null);
     const [loading, setLoading] = useState(true);
-
     const fetchDetail = async () => {
         setLoading(true);
         try {
@@ -36,42 +35,73 @@ export default function TransactionDetailScreen({ route, navigation }) {
             headerRight: () => (
                 <Menu>
                     <MenuTrigger>
-                        <IconButton icon="dots-vertical" iconColor="#fff" />
-                    </MenuTrigger>
-                    <MenuOptions>
-                        <MenuOption
-                            onSelect={() => navigation.navigate('Edittransaction', { id })}
-                            text="Edit"
+                        <IconButton
+                            icon="dots-vertical"
+                            iconColor="#fff"
                         />
-                        <MenuOption onSelect={handleDelete} text="Delete" />
+                    </MenuTrigger>
+
+                    <MenuOptions>
+                        <Pressable
+                            onPress={() =>
+                                navigation.navigate('EditCustomer', { id })
+                            }
+                        >
+                            {({ pressed }) => (
+                                <View style={styles.menuItem}>
+                                    <Text
+                                        style={[
+                                            styles.menuText,
+                                            pressed && styles.pressedText,
+                                        ]}
+                                    >
+                                        See more details
+                                    </Text>
+                                </View>
+                            )}
+                        </Pressable>
+
+                        <Pressable onPress={handleCancel}>
+                            {({ pressed }) => (
+                                <View style={styles.menuItem}>
+                                    <Text
+                                        style={[
+                                            styles.menuText,
+                                            pressed && styles.pressedText,
+                                        ]}
+                                    >
+                                        Cancel transaction
+                                    </Text>
+                                </View>
+                            )}
+                        </Pressable>
                     </MenuOptions>
                 </Menu>
             ),
         });
-    }, [navigation]);
+    }, [navigation, id]);
 
-    const handleDelete = () => {
+    const handleCancel = () => {
         Alert.alert(
             'Warning',
-            'Are you sure you want to remove this transaction? This operation cannot be returned',
+            'Are you sure you want to cancel this transaction? This will affect the customer transaction information',
             [
-                { text: 'CANCEL', style: 'cancel' },
                 {
-                    text: 'DELETE',
+                    text: 'YES',
                     style: 'destructive',
                     onPress: async () => {
                         try {
-                            const token = await AsyncStorage.getItem('token');
                             await axios.delete(`${BASE_URL}/transactions/${id}`, {
-                                headers: { Authorization: `Bearer ${token}` },
+                                status: 'cancelled',
                             });
-                            navigation.navigate('Home');
+                            navigation.goBack();
                         } catch (err) {
                             console.log(err.response?.data || err.message);
-                            Alert.alert('Lỗi', 'Xóa thất bại');
+                            Alert.alert('Error', 'Cancel transaction failed');
                         }
                     },
                 },
+                { text: 'CANCEL', style: 'cancel' },
             ]
         );
     };
@@ -81,12 +111,11 @@ export default function TransactionDetailScreen({ route, navigation }) {
 
         const day = String(d.getDate()).padStart(2, '0');
         const month = String(d.getMonth() + 1).padStart(2, '0');
-        const year = String(d.getFullYear()).slice(-2);
-
+        const year = d.getFullYear();
         const hour = String(d.getHours()).padStart(2, '0');
         const minute = String(d.getMinutes()).padStart(2, '0');
-
-        return `${day}/${month}/${year} ${hour}:${minute}`;
+        const second = String(d.getSeconds()).padStart(2, '0');
+        return `${day}/${month}/${year} ${hour}:${minute}:${second}`;
     };
 
     if (loading || !transaction) {
@@ -199,4 +228,24 @@ const styles = StyleSheet.create({
         marginBottom: 5,
     },
 
+    menuItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+    },
+
+    menuText: {
+        marginLeft: 5,
+        fontSize: 15,
+    },
+
+    menuText: {
+        marginLeft: 5,
+        fontSize: 15,
+    },
+
+    pressedText: {
+        color: '#e94867',
+    },
 });

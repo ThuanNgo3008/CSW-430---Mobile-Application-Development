@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { View, FlatList, StyleSheet } from 'react-native';
-import { Appbar, FAB, ActivityIndicator, Avatar, Text } from 'react-native-paper';
+import { Appbar, FAB, ActivityIndicator } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
 import axios from 'axios';
 import TransactionItem from '../components/TransactionItem';
@@ -57,7 +57,7 @@ export default function TransactionScreen({ navigation }) {
                     size="large"
                     style={styles.fab}
                     color="#fff"
-                    onPress={() => navigation.navigate('AddCustomer')}
+                    onPress={() => navigation.navigate('AddTransaction')}
                 />
             </View>
 

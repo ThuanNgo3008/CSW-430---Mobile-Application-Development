@@ -35,7 +35,12 @@ export default function MyBottomNavigation({ navigation }) {
                     />
                 );
             case 'customer':
-                return <CustomerScreen />;
+                return (
+                    <CustomerScreen
+                        navigation={navigation}
+                        jumpTo={jumpTo}
+                    />
+                );
             case 'setting':
                 return (
                     <SettingScreen
